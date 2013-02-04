@@ -75,7 +75,7 @@
                 $(selected).removeClass('unselected');
                 $('#slideIndex').scrollLeft(selected.offsetLeft-($('#slideIndex').width()-$(selected).width()));
             } else {
-                $("#slideIndex div:first-child").addClass("selected");
+                $("#slideIndex div:first-child").not('.imgDiv').addClass("selected");
             }
         };
 
@@ -87,11 +87,21 @@
                 var indexDiv = document.getElementById('slideIndex');
                 var tempDiv = document.createElement('div');
                 $(tempDiv).addClass('divInIndex').attr('id','slideIndex'+idxTime.replace('.','-')+'s');
-                var slideImg = document.createElement('img');
-                slideImg.src = imgPath + C2G.videoSetup.slideIndices[idxTime].imgsrc;
-                $(slideImg).attr('alt', 'Jump to section ' + idxTime + ' of the video');
+
+                if (typeof sprite_avail != "undefined" && sprite_avail) {
+                    // sprites are available, just need element with bg img
+                    var slideImg = document.createElement('span');
+                    $(slideImg).addClass('imgEl');
+                    $(slideImg).addClass('s' + idxTime);
+                } else {
+                    // fallback is img element
+                    var slideImg = document.createElement('img');
+                    slideImg.src = imgPath + C2G.videoSetup.slideIndices[idxTime].imgsrc;
+                    $(slideImg).attr('alt', 'Jump to section ' + idxTime + ' of the video');
+                }
+
                 C2G.videoSetup.slideIndices[idxTime].displayDiv = tempDiv;
-                tempDiv.appendChild(slideImg);
+                $(tempDiv).append($(slideImg));
                 tempDiv.onclick=(function (time) {return function(evt) {
                     window.popcornVideo.play();
                     window.popcornVideo.currentTime(time)
