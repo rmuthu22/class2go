@@ -15,6 +15,12 @@ iconMapFile.close()
 
 images = [Image.open(filename) for cssClass, filename in iconMap]
 
+# Prepend 's' to class names if the keys in the icon-mapping are
+# integers (video seconds); CSS class names shouldn't start with
+# numerals 
+if cssClass[0] != 's':
+    cssClass = 's' + cssClass
+
 print "%d images will be combined." % len(images)
 
 image_width, image_height = images[0].size
@@ -48,15 +54,16 @@ print "saving master.png...",
 master.save('master.png')
 print "saved!"
 
-
-cssTemplate = '''li.%s {
-    background-position: 6px %dpx;
+cssTemplate = '''.%s {
+    background-position: 0px %dpx;
 }
 '''
 
 for format in ['png','gif']:
     print 'saving icons_%s.css...' % format,
     iconCssFile = open('icons_%s.css' % format ,'w')
+    basic_list_style = ".divInIndex .imgEl {background-color:#fff;background-image:url(master.png);background-repeat:no-repeat;display:block;float:left;height:%dpx;margin:3px;overflow:hidden;padding:2px 2px 12px;width:%dpx;}\n" % (image_height, image_width)
+    iconCssFile.write(basic_list_style)
     for count, pair in enumerate(iconMap): 
         cssClass, filename = pair
         location = image_height*count*2
