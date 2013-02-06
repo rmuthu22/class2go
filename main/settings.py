@@ -5,6 +5,12 @@ import django.template
 import djcelery
 
 from database import *
+
+#Sets the expires parameter in s3 urls to 10 years out.
+#This needs to be above the import monkeypatch line
+#otherwise we lose the 10 year urls.
+AWS_QUERYSTRING_EXPIRE = 3.156e+8
+
 import monkeypatch
 
 #ADDED FOR url tag future
@@ -269,7 +275,6 @@ INSTALLED_APPS = (
                       'courses.video_exercises',
                       'courses.email_members',
                       'courses.reports',
-                      'khan',
                       'problemsets',
                       'django.contrib.flatpages',
                       'storages',
@@ -325,9 +330,6 @@ if (AWS_ACCESS_KEY_ID == 'local' or AWS_SECRET_ACCESS_KEY == 'local' or
         # TODO: fail if not defined
         pass
 
-#Sets the expires parameter in s3 urls to 10 years out.
-AWS_QUERYSTRING_EXPIRE = 3.156e+8
-
 #This states that app c2g's UserProfile model is the profile for this site.
 AUTH_PROFILE_MODULE = 'c2g.UserProfile'
 
@@ -363,7 +365,7 @@ LOGGING = {
             'level':'INFO', #making this DEBUG will log _all_ SQL queries.
             'class':'logging.handlers.RotatingFileHandler',
             'formatter':'verbose',
-            'filename': LOGGING_DIR+APP+'-django.log',
+            'filename': LOGGING_DIR+'/'+APP+'-django.log',
             'maxBytes': 1024*1024*500,
             'backupCount': 3,
         },
@@ -406,8 +408,9 @@ SESSION_COOKIE_AGE = 3*30*24*3600
 
 
 # Database routing
-DATABASE_ROUTERS = ['c2g.routers.CeleryDBRouter',]
-
+DATABASE_ROUTERS = ['c2g.routers.CeleryDBRouter',
+                    'c2g.routers.ReadonlyDBRouter',
+                   ]
 
 # Actually send email
 try:
@@ -431,7 +434,7 @@ if PRODUCTION or EMAIL_ALWAYS_ACTUALLY_SEND:
 #Otherwise, send email to a file in the logging directory
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
-    EMAIL_FILE_PATH = LOGGING_DIR + 'emails_sent.log'
+    EMAIL_FILE_PATH = LOGGING_DIR + '/emails_sent.log'
 
 #Max number of emails sent by each worker, defaults to 10
 #EMAILS_PER_WORKER = 10

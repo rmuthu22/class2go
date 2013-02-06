@@ -54,9 +54,7 @@
 
 {% block m_column_content %}
 <div id="c2g_layout_m_column" class="span9">
-<div class="alert alert-error" id="nojswarn">
-You don't have Javascript enabled or jQuery was not loaded.  This page won't work!  Please re-enable Javascript.
-</div>
+
 {% autoescape off %}
 
 {% if common_page_data.course.mode == "ready" and not exam.is_live %}
@@ -121,6 +119,15 @@ You don't have Javascript enabled or jQuery was not loaded.  This page won't wor
         
     .correct {color: #090;}
     .incorrect {color: #900;}
+        .timer_container {float:right; position:relative; right:0px; padding:2px; margin:0px; font-size:16px; background:white; border: 1px solid transparent;}
+        .timer_container.fixed { padding:2px; margin:0px; position: fixed; top:5px; right:5px; z-index:11; background:white; border-radius: 4px; border: 1px solid #DDCF99;}
+    input[type="checkbox"] {margin-top: 4px;}
+    
+    p {padding-bottom: 0px; }
+    fieldset {margin-bottom: 2em;}
+    select {margin-bottom: 2em; }
+
+
     </style>
 
     {% if videotest %}
@@ -139,13 +146,26 @@ You don't have Javascript enabled or jQuery was not loaded.  This page won't wor
 
        <h3>This exam was closed on {{ exam.partial_credit_deadline }} PST.  Submissions are disabled. </h3>
     
-    
-    {% elif too_many_attempts %}
+    {% endif %}
+    {% if endtime %}
+        {% if timeopened < endtime %}
+            <div class="timer_container" id="countdown">
+            <b style="color:green">End: {{ endtime|date:"N d, P T" }}. About <span id="timeremaining">00:00:00</span> left</b>
+            </div>
+            
+        {% else %}
+            <h3> <b style="color:red"> Your time on the exam expired at {{ endtime|date:"N d Y, P T" }}. </b></h3><br />
+        {% endif %}
+
+    {% endif %}
+    {% if too_many_attempts %}
     
         <h3>You've made too many attempts. Submissions are disabled.</h3>
 
     {% endif %}
 
+    
+    
     {% if score %}
     <h4><b style="color:red">Score: {{score}}/{{exam.total_score}}</b></h4>
     {% endif %}
@@ -203,6 +223,9 @@ You don't have Javascript enabled or jQuery was not loaded.  This page won't wor
     {% if videotest %}
      <script src="{{STATIC_URL}}js/popcorn/popcorn-ie8.min.js"></script>
     {% endif %}
+    {% if exam.timed %}
+    <script src="{{STATIC_URL}}js/core/jquery-scrollspy.js"></script>
+    {% endif %}
 <script>
     var __exam_type = "{{exam.exam_type}}";
     var __autograde = {% if exam.autograde %}true{% else %}false{% endif %};
@@ -210,6 +233,8 @@ You don't have Javascript enabled or jQuery was not loaded.  This page won't wor
     
     /* Do all the stuff below when page loads (~700 lines!) */
     $(document).ready(function () {
+                   
+        var unsavedChanges = false; //variable flag to denote chnages have been made on page
                       
         {% if videotest %}
 
@@ -663,8 +688,6 @@ You don't have Javascript enabled or jQuery was not loaded.  This page won't wor
         $(userNote).hide();
     {% endif %}
                       
-    $('#nojswarn').remove();
-                      
     /********* Save Work Button (not submitting as complete) ********/
                       
     {% if not videotest and editable %}
@@ -715,7 +738,8 @@ You don't have Javascript enabled or jQuery was not loaded.  This page won't wor
                                    buttons: {'Close':function(){$(this).dialog("close");}}
                                  });
         });
-
+        
+        unsavedChanges = false; //clear flag when save button clicked
     });
 
 
@@ -757,6 +781,7 @@ You don't have Javascript enabled or jQuery was not loaded.  This page won't wor
                 if (scores.hasOwnProperty(member)) {
                       //Label the closet div enclosing the choices with the score (probably want fieldset instead)
                       $('input[name|=' + member + ']').first().closest('fieldset').before("<b style='color:red'> " + scores[member]+" </b> ");
+                      $('option[name|=' + member + ']').first().closest('select').before("<b style='color:red'> " + scores[member]+" </b> ");
                 }
                 // it's multiple choice, therefore an array
                 $('input[name|=' + member + ']').removeAttr('checked');
@@ -803,86 +828,9 @@ You don't have Javascript enabled or jQuery was not loaded.  This page won't wor
         }
     };
 
-    window.displayQuestionExplanation = function(questionMD){
-        //This function takes a DOM object of the metadata and displays the question explanation after the
-        //question with the corresponding id
-        var mySolution = $(questionMD).find('solution');
-        var assocQID = $(questionMD).attr('id');
-        var explArea = $('#' + assocQID + '-expl');
-        if (explArea.length == 0) {
-            explArea = document.createElement('div');
-            $(explArea).attr('id', assocQID + '-expl');
-            $(explArea).addClass('explanation');
-        }
-        $(explArea).empty();
-        if ($('#' + assocQID + ' .toggle-explanation').length == 0) {
-            var toggleExplBtn = document.createElement('input');
-            $(toggleExplBtn).attr('type','button');
-            //$(toggleExplBtn).attr('id','toggleExplanation_' + idx);
-            $(toggleExplBtn).addClass('btn').addClass('toggle-explanation');
-            $(toggleExplBtn).attr('data-status', 'Show');
-            $(toggleExplBtn).attr('value', 'Show Explanation');
-            $(toggleExplBtn).click(toggleExplanation);
-        }
-        $(explArea).hide();
-        $('#' + assocQID + ' .toggle-explanation').attr('data-status', 'Show');
-        $('#' + assocQID + ' .toggle-explanation').val("Show explanation");
-        //$(explArea).append("<h4>Explanation</h4>");
-        $(mySolution).contents().each(function(){
-            //nodeName according to DOM spec:  http://www.w3.org/TR/REC-DOM-Level-1/level-one-core.html
-            if (this.nodeName=="#cdata-section" || this.nodeName=="#text") {
-                $(explArea).append($(this).text());
-            }
-            else { //for DOM nodes that are elements
-                $(explArea).append($(this).clone());
-            }
-        });
-        $('div.question#' + assocQID ).append($(explArea));
-        $(explArea).before('<div class="clearing-div"></div>').before($(toggleExplBtn));
-    };
-
-    window.displayChoiceExplanations = function(questionMD) {
-        //This function takes a DOM object of the metadata and displays the choice explanations
-        //for question with the corresponding id, if that question is multiple choice
+    {# factored out into separate file for code sharing #}
+    {% include "exams/displayExplanation.js" %}
                       
-        var createInlineExp = function (targetEl) {
-            var tmpInlineExpl = document.createElement('span');
-            $(tmpInlineExpl).addClass('inline-explanation');
-            $(tmpInlineExpl).attr('id', $(targetEl).find('input:first').attr('id') + '-expl');
-            $(targetEl).append($(tmpInlineExpl));
-
-            return $(tmpInlineExpl);
-        };
-                      
-        var responses = $(questionMD).find('response');
-        responses.each(function () {
-            var responseType = $(this).attr('answertype');
-            if (responseType == "multiplechoiceresponse") {
-                var choices = $(this).find('choice');
-                var response = this;
-                choices.each(function () {
-                    var choiceInput = $('input[name|="' + $(response).attr('name') + '"]')
-                                      .filter('input[value|="' + $(this).attr('value') + '"]');
-                    if(choiceInput.attr('checked')){
-                        var choiceLabel = $(choiceInput).closest('label');
-                        //console.log(choiceLabel.length);
-                        //console.log($(choiceLabel).find('.inline-explanation').length);
-                        var inlineExpl = $(choiceLabel).find('.inline-explanation');
-                        if (inlineExpl.length == 0) {
-                            inlineExpl = createInlineExp($(choiceLabel));
-                        }
-                        //console.log(inlineExpl);
-                        if ($(this).attr('correct') && $(this).attr('correct') == 'true') {
-                            $(inlineExpl).addClass('correct');
-                        }
-                        $(inlineExpl).empty();
-                        $(inlineExpl).append($(this).find('explanation').text());
-                    }
-                });
-        }});
-        
-    };
-
     window.showCorrections = function (correxObj) {
         //This function marks the user answer correct or wrong and then
         //shows the question level explanations as well as relevant choice-level explanations
@@ -944,6 +892,10 @@ You don't have Javascript enabled or jQuery was not loaded.  This page won't wor
         var questionMD = $(examMD).find('question_metadata');
         $(questionMD).each(function(){displayQuestionExplanation(this);
                          displayChoiceExplanations(this);});
+        {% if exam.load_mathjax %}
+        MathJax.Hub.Queue(["Typeset",MathJax.Hub,"exam-pane"]);
+        {% endif %}
+
 
     };
 
@@ -1046,6 +998,20 @@ You don't have Javascript enabled or jQuery was not loaded.  This page won't wor
             $(dialogDiv).dialog({modal: true});
         });
 
+        unsavedChanges = false; //clear flag when submit button clicked
+    });
+    
+    $('input[type="radio"], input[type="checkbox"]').change(function() {
+        unsavedChanges = true; //denote change on radio and checkbox inputs and register unsaved changes
+    });
+    $('textarea, input[type="text"]').keyup(function() {
+        unsavedChanges = true; //denote keystroke and register unsaved changes
+    });
+    
+    $(window).on('beforeunload', function(){
+        if (unsavedChanges) {
+           return 'You have unsaved changes!';
+        }
     });
                       
     // Make sure pre-pop is in a properly-escaped string 
@@ -1070,11 +1036,72 @@ You don't have Javascript enabled or jQuery was not loaded.  This page won't wor
 
     {% if common_page_data.course.mode == "ready" and exam.past_all_deadlines or not allow_submit or too_many_attempts  %}{# 'not's > 'and's > 'or's #}
     $('#submit-button').attr('disabled','disabled');
+    $('#saveWorkBtn').attr('disabled','disabled');
     $('#reEnableForm').remove();
     $('#main-content input').not('.question-nav').not('.toggle-explanation').attr('disabled','disabled');
     $('#main-content textarea').attr('disabled','disabled');
                       
     {% endif %}
+                      
+                      
+    {% if endtime and timeopened < endtime %}
+
+    var getHMS=function(seconds) {
+        var sign = (seconds>=0) ? "" : "-" ;
+        seconds=Math.abs(seconds);
+        var H = Math.floor(seconds / 3600);
+        var M = Math.floor((seconds % 3600) / 60);
+        var S = Math.floor(seconds % 60);
+        var Hstring = "" + H;
+        var Mstring = "" + M;
+        var Sstring = "" + S;
+
+        if (H < 10) Hstring = "0"+Hstring;
+        if (M < 10) Mstring = "0"+Mstring;
+        if (S < 10) Sstring = "0"+Sstring;
+        return sign + Hstring + ":" + Mstring + ":" + Sstring;
+    }
+
+    var endtimeInServerEpoch = {{endtime|date:"U"}};
+    var nowInServerEpoch = {{timeopened|date:"U"}}; //Default value, updated via ajax
+    var secondsleft = endtimeInServerEpoch-nowInServerEpoch;
+    var browserEndTime = (new Date().getTime()/1000) + secondsleft; //more reliable to convert endtime to browser perspective
+    $("#timeremaining").text(getHMS(browserEndTime-new Date().getTime()/1000)); //Update time remaining ASAP
+
+    //Do ajax call to improve back/forward button behavior (it doesn't cache)
+    //Also note this basically synchs the browser with the server once per page load,
+    //Not continuously at some beat.
+    $.ajax("{% url 'c2g.views.server_epoch' %}", {
+         cache:false,
+         success:function(data){
+             nowInServerEpoch=JSON.parse(data);
+             secondsleft = endtimeInServerEpoch-nowInServerEpoch;
+             browserEndTime = (new Date().getTime()/1000) + secondsleft;
+             $("#timeremaining").text(getHMS(browserEndTime-new Date().getTime()/1000)); //Update time remaining ASAP
+         }
+     });
+
+    var setTimeLeft = function() {
+        timeleft = browserEndTime-new Date().getTime()/1000;
+        $("#timeremaining").text(getHMS(timeleft));
+        if (timeleft < 0) $("#timeremaining").css('color','red');
+    }
+    setInterval(setTimeLeft,1000);
+                    
+    $("#countdown").scrollspy({
+                              max: $('body').height(),
+                              min: $('#countdown').offset().top+2,
+                              onEnter: function(element, position) {
+                                $("#countdown").addClass('fixed');
+                              },
+                              onLeave: function(element, position) {
+                                $("#countdown").removeClass('fixed');
+                              }
+                      
+                      });
+    
+    {% endif %}
+                      
                       
     }); /* END document.ready function that executes when page loads */
     
