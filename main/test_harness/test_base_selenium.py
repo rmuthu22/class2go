@@ -1,32 +1,38 @@
-from django.core.urlresolvers import reverse
 from django.test import LiveServerTestCase
 from nose.plugins.attrib import attr
 from selenium import webdriver
+try:
+    from pyvirtualdisplay import Display    # Make virtual display ability optional
+except ImportError, msg:
+    Display = False
 from selenium.webdriver.support.ui import WebDriverWait # available since 2.4.0
 
 from os import environ
-
-if ( environ.has_key('C2G_HEADLESS_TESTS') and
-     environ['C2G_HEADLESS_TESTS'] ):
-  from pyvirtualdisplay import Display
 
 @attr('slow')
 class SeleniumTestBase(LiveServerTestCase):
 
     @classmethod
     def setup_class(cls):
-        if ( environ.has_key('C2G_HEADLESS_TESTS') and
-             environ['C2G_HEADLESS_TESTS'] ):
-            cls.display = Display(visible=0, size=(800, 600))
-            cls.display.start()
-        cls.browser = webdriver.Chrome()
+        headless = environ.get('C2G_HEADLESS_TESTS', 0)
+        webdriver_preference = environ.get('C2G_SELENIUM_WEBDRIVER', 'chrome')
+        if headless:
+            if Display:
+                cls.display = Display(visible=0, size=(800, 600))
+                cls.display.start()
+            # Ok, asked for headless but we can't support it - so run with a head 
+            print "WARNING: C2G_HEADLESS_TESTS specified, but pyvirtualdisplay not installed."
+            print "         Continuing assuming native X display available."
+        if webdriver_preference == 'chrome':
+            cls.browser = webdriver.Chrome()
+        elif webdriver_preference == 'firefox':
+            cls.browser = webdriver.Firefox()
         super(SeleniumTestBase, cls).setUpClass()
 
     @classmethod
     def teardown_class(cls):
         cls.browser.quit()
-        if ( environ.has_key('C2G_HEADLESS_TESTS') and
-             environ['C2G_HEADLESS_TESTS'] ):
+        if Display:
             cls.display.stop()
         super(SeleniumTestBase, cls).tearDownClass()
 
@@ -55,7 +61,6 @@ class SeleniumTestBase(LiveServerTestCase):
 
         # wait at most 10 seconds or until we see evidence of login
         WebDriverWait(browser, 10).until(lambda browser : browser.find_element_by_xpath('//span[contains(text(), "Welcome")]'))
-
 
 class StudentBase(SeleniumTestBase):
     """
