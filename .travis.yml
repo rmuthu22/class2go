@@ -2,20 +2,18 @@ language: python
 python:
   - "2.7"
 env:
-  - DB=mysql
+  - DB=mysql C2G_SELENIUM_WEBDRIVER=firefox C2G_HEADLESS_TESTS=1 
 before_install:
-  # Tell Selenium to run tests with Firefox r/t Chrome
-  - "export C2G_SELENIUM_WEBDRIVER=firefox"
+  - sudo apt-get update -qq
+  - sudo apt-get install -qq unzip flashplugin-installer 
 install:
-  - "pip install -r requirements.txt --use-mirrors"
-  # Next two lines are Selenium headless test dependencies
-  - sudo apt-get -q update && sudo apt-get -q install unzip flashplugin-installer
   - pip install pyvirtualdisplay
+  - pip install -r requirements.txt --use-mirrors
 before_script:
   - bash main/travis/setup.sh
   - mysql -e 'create database class2go'
+  - cd main
 script: 
-  # Run with selenium tests in headless mode
-  - cd main; C2G_HEADLESS_TESTS=1 python manage.py test -v 2
+  - python manage.py test -v 2
 notifications:
-  irc: "irc.freenode.org#class2go-internal"
+  #irc: "irc.freenode.org#class2go-internal"

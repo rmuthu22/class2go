@@ -39,9 +39,8 @@ class StudentVideoTest(StudentBase):
     @attr('selenium')
     @attr(user='student')
     def test_course_video(self):
-        """
-        [sel] Tests that a student can display an individual video
-        """
+        """[sel] Tests that a student can display an individual video"""
+        print "top", # DEBUG
         self.do_login()
         browser = self.browser
 
@@ -51,12 +50,14 @@ class StudentVideoTest(StudentBase):
                                    'course_suffix' : self.course_suffix })
         browser.get('%s%s' % (self.live_server_url, list_url))
         WebDriverWait(browser, 15).until(lambda browser : browser.find_element_by_xpath('//body'))
+        print "login", # DEBUG
 
         # pull the urls of each video from the in-page list
         tree = etree.HTML(browser.page_source)
         # pull the href from the anchor contained in the course-list-content
         urls = tree.xpath('//div[@class="course-list-content"]//a/@href')
         self.assertEqual(len(urls), 3, msg="Wrong number of live videos.")
+        print "videocount=%d" % len(urls), # DEBUG
 
         # attempt to load each video from the list
         for url in urls:
@@ -67,4 +68,5 @@ class StudentVideoTest(StudentBase):
             # switch to the iframe for the youtube player and find the embeded player
             browser.switch_to_frame(browser.find_element_by_tag_name('iframe'))
             self.assertTrue(browser.find_element_by_xpath('//embed[@id="video-player-flash"]'))
+            print "vidok", # DEBUG
 
