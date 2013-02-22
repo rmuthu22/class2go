@@ -9,9 +9,7 @@ class InstructorVideoTest(InstructorBase):
     @attr('selenium')
     @attr(user='instructor')
     def test_course_video_problem_set(self):
-        """
-        [sel] Tests an instructor can load and display a video problemset
-        """
+        """[sel] Test an instructor can load and display a video problemset"""
         # log in to the site before loading a page
         self.do_login()
         browser = self.browser
@@ -64,9 +62,11 @@ class StudentVideoTest(StudentBase):
             browser.get('%s%s' % (self.live_server_url, url))
             # When loaded we should have an iframe that contains the youtube content
             WebDriverWait(browser, 15).until(lambda browser : browser.find_element_by_tag_name('iframe'))
+            debug_out("--found iframe--")
 
             # switch to the iframe for the youtube player and find the embeded player
             browser.switch_to_frame(browser.find_element_by_tag_name('iframe'))
+            debug_out("switched to iframe--")
             self.assertTrue(browser.find_element_by_xpath('//embed[@id="video-player-flash"]'))
-            debug_out("vidok, ")
+            debug_out("found iframe contents--")
 
