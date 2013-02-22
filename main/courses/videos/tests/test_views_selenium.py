@@ -2,7 +2,20 @@ from django.core.urlresolvers import reverse
 from lxml import etree
 from nose.plugins.attrib import attr
 from selenium.webdriver.support.ui import WebDriverWait # available since 2.4.0
-from test_harness.test_base_selenium import InstructorBase, StudentBase, debug_out
+from test_harness.test_base_selenium import InstructorBase, StudentBase
+
+
+def DEBUG(s):
+    import sys
+    sys.stderr.write(s)
+
+def pause():
+    """Insert a short random pause into execution."""
+    import random
+    import time
+    t = random.random() * 3
+    time.sleep(t)
+    DEBUG('paused for %s\n' % str(t))
 
 class InstructorVideoTest(InstructorBase):
 
@@ -34,11 +47,11 @@ class InstructorVideoTest(InstructorBase):
 
 class StudentVideoTest(StudentBase):
 
+    @attr('breaks_travis-ci')
     @attr('selenium')
     @attr(user='student')
     def test_course_video(self):
         """[sel] Tests that a student can display an individual video"""
-        debug_out("student test top, ")
         self.do_login()
         browser = self.browser
 
@@ -48,25 +61,24 @@ class StudentVideoTest(StudentBase):
                                    'course_suffix' : self.course_suffix })
         browser.get('%s%s' % (self.live_server_url, list_url))
         WebDriverWait(browser, 15).until(lambda browser : browser.find_element_by_xpath('//body'))
-        debug_out("login, ")
 
         # pull the urls of each video from the in-page list
         tree = etree.HTML(browser.page_source)
         # pull the href from the anchor contained in the course-list-content
         urls = tree.xpath('//div[@class="course-list-content"]//a/@href')
         self.assertEqual(len(urls), 3, msg="Wrong number of live videos.")
-        debug_out("videocount=%d, " % len(urls))
 
         # attempt to load each video from the list
         for url in urls:
             browser.get('%s%s' % (self.live_server_url, url))
+            pause()
             # When loaded we should have an iframe that contains the youtube content
             WebDriverWait(browser, 15).until(lambda browser : browser.find_element_by_tag_name('iframe'))
-            debug_out("--found iframe--")
+            DEBUG('F[')
 
             # switch to the iframe for the youtube player and find the embeded player
             browser.switch_to_frame(browser.find_element_by_tag_name('iframe'))
-            debug_out("switched to iframe--")
+            DEBUG('e')
             self.assertTrue(browser.find_element_by_xpath('//embed[@id="video-player-flash"]'))
-            debug_out("found iframe contents--")
+            DEBUG(']\n')
 
