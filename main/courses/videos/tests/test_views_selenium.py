@@ -70,11 +70,12 @@ class StudentVideoTest(StudentBase):
 
         # attempt to load each video from the list
         for url in urls:
-            browser.get('%s%s' % (self.live_server_url, url))
             pause()
+            browser.get('%s%s' % (self.live_server_url, url))
+            DEBUG('b')
             # When loaded we should have an iframe that contains the youtube content
             WebDriverWait(browser, 15).until(lambda browser : browser.find_element_by_tag_name('iframe'))
-            DEBUG('F[')
+            DEBUG('[')
 
             # switch to the iframe for the youtube player and find the embeded player
             browser.switch_to_frame(browser.find_element_by_tag_name('iframe'))
