@@ -8,6 +8,13 @@ except ImportError, msg:
 from selenium.webdriver.support.ui import WebDriverWait # available since 2.4.0
 
 from os import environ
+import sys
+
+def debug_out(s):
+    pass
+def debug_out_working(s):
+    sys.stderr.write(s)
+debug_out = debug_out_working
 
 @attr('slow')
 class SeleniumTestBase(LiveServerTestCase):
@@ -37,18 +44,17 @@ class SeleniumTestBase(LiveServerTestCase):
         super(SeleniumTestBase, cls).tearDownClass()
 
     def do_login(self):
-        """
-        Login in to the site with the preset username & password.
-        """
+        """Login with the preset username & password"""
         browser = self.browser
-
+        debug_out("DEBUG: got browser\n")
         # fetch the page and make sure it loads and we have a user entry field
         browser.get('%s%s' % (self.live_server_url, self.login_path))
 
-        print(self.live_server_url)
+        debug_out("DEBUG: got live_server_url %s\n" % self.live_server_url)
 
         WebDriverWait(browser, 10).until(lambda browser : browser.find_element_by_id('id_username'))
 
+        debug_out("DEBUG: got username box\n")
         # now that we have the page, fill out the form
         userField = browser.find_element_by_id('id_username')
         userField.send_keys(self.username)
@@ -61,6 +67,7 @@ class SeleniumTestBase(LiveServerTestCase):
 
         # wait at most 10 seconds or until we see evidence of login
         WebDriverWait(browser, 10).until(lambda browser : browser.find_element_by_xpath('//span[contains(text(), "Welcome")]'))
+        debug_out("DEBUG: looks like we're logged in as %s\n" % self.username)
 
 class StudentBase(SeleniumTestBase):
     """
